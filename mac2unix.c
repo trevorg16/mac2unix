@@ -1,5 +1,13 @@
+#define _FILE_OFFSET_BITS 64
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+
+
+#define READ_SIZE (4096)
+
+#define MAX(a,b) ((a) > (b) ? a : b)
+#define MIN(a,b) ((a) < (b) ? a : b)
 
 int main(int argc, char** argv)
 {
@@ -13,42 +21,39 @@ int main(int argc, char** argv)
         {
             int error = 0;
 
-            if (fseek (f, 0, SEEK_END) != 0)
+            if (fseeko (f, 0, SEEK_END) != 0)
             {
                 fprintf(stderr, "Failed to seek to end of file %s\n", argv[i]);
                 fclose(f);
                 continue;
             }
 
-            long size = ftell(f);
+            off_t size = ftello(f);
 
-            rewind(f);
+            char m[READ_SIZE];
 
-            char* m = (char*) malloc(size * sizeof(char));
+            off_t totalSizeProcessed = 0;
 
-            if (!m)
+            while (totalSizeProcessed < size)
             {
-                error = 1;
-                fprintf(stderr, "Could not allocate %ld bytes of memory for file %s\n", size, argv[i]);
-            }
+                if(fseeko(f, totalSizeProcessed, SEEK_SET) != 0)
+                {
+                    error = 1;
+                    fprintf(stderr, "Failed to seek to position %ld for file %s\n", totalSizeProcessed, argv[i]);
+                    break;
+                }
 
-            size_t totalSizeRead = 0;
-            while (totalSizeRead < size && !error)
-            {
-                size_t sizeRead = fread(m + totalSizeRead, sizeof(char), size, f);
+                size_t readSize = fread(m, sizeof(char), MIN(READ_SIZE, size - totalSizeProcessed), f);
 
-                if(sizeRead == 0 && ferror(f) != 0)
+                if (readSize == 0 && ferror(f))
                 {
                     error = 1;
                     fprintf(stderr, "Error when doing fread on file %s", argv[i]);
+                    break;
                 }
-                totalSizeRead += sizeRead;
-            }
 
-            if (!error)
-            {
                 // Translate \r to \n
-                for (long pos = 0; pos < size; pos++)
+                for (size_t pos = 0; pos < readSize; pos++)
                 {
                     if (m[pos] == '\r')
                     {
@@ -56,32 +61,38 @@ int main(int argc, char** argv)
                     }
                 }
 
-                // Write the file back
-                rewind(f);
+                if(fseeko(f, totalSizeProcessed, SEEK_SET) != 0)
+                {
+                    error = 1;
+                    fprintf(stderr, "Failed to seek to position %ld for file %s\n", totalSizeProcessed, argv[i]);
+                    break;
+                }
 
                 size_t totalSizeWritten = 0;
 
-                while(totalSizeWritten < size && !error)
+                while (totalSizeWritten < readSize)
                 {
-                    size_t sizeWritten = fwrite(m + totalSizeWritten, sizeof(char), size - totalSizeWritten, f);
+                    size_t sizeWritten = fwrite(m, sizeof(char), readSize - totalSizeWritten, f);
 
                     if (sizeWritten == 0)
                     {
                         error = 1;
                         fprintf(stderr, "Failed to write to file %s\n", argv[i]);
+                        break;
                     }
 
                     totalSizeWritten += sizeWritten;
                 }
+
+                totalSizeProcessed += totalSizeWritten;
             }
 
             if (!error)
             {
-                printf("Success converting %s\n", argv[i]);
+                fprintf(stderr, "Success converting %s\n", argv[i]);
             }
 
             fclose(f);
-            free(m);
         }
         else
         {
