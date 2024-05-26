@@ -39,6 +39,7 @@ int main(int argc, char** argv)
                 if(fseeko(f, totalSizeProcessed, SEEK_SET) != 0)
                 {
                     error = 1;
+                    rc = 1;
                     fprintf(stderr, "Failed to seek to position %ld for file %s\n", totalSizeProcessed, argv[i]);
                     break;
                 }
@@ -48,6 +49,7 @@ int main(int argc, char** argv)
                 if (readSize == 0 && ferror(f))
                 {
                     error = 1;
+                    rc = 1;
                     fprintf(stderr, "Error when doing fread on file %s", argv[i]);
                     break;
                 }
@@ -64,6 +66,7 @@ int main(int argc, char** argv)
                 if(fseeko(f, totalSizeProcessed, SEEK_SET) != 0)
                 {
                     error = 1;
+                    rc = 1;
                     fprintf(stderr, "Failed to seek to position %ld for file %s\n", totalSizeProcessed, argv[i]);
                     break;
                 }
@@ -77,6 +80,7 @@ int main(int argc, char** argv)
                     if (sizeWritten == 0)
                     {
                         error = 1;
+                        rc = 1;
                         fprintf(stderr, "Failed to write to file %s\n", argv[i]);
                         break;
                     }
@@ -97,6 +101,7 @@ int main(int argc, char** argv)
         else
         {
             fprintf(stderr, "Failed to open file %s\n", argv[i]);
+            rc = 1;
         }
     }
 
