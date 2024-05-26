@@ -1,5 +1,5 @@
 CC=cc
-CC_OPTS=-Wall -Wextra -O2
+CC_OPTS=-std=c99 -Wall -Wextra -O2
 
 TARGET=mac2unix
 
